@@ -19,13 +19,8 @@ async function getPageContent(tabId) {
 
 // ── Grouping logic ─────────────────────────────────────────────────
 
-async function updateGroup(groupId, { collapsed, ...style }) {
-  // Set title, color, and collapse in one call.
-  await chrome.tabGroups.update(groupId, { ...style, collapsed: true });
-  // Chrome doesn't repaint newly-created group headers until a toggle
-  // happens — simulate a click by expanding then re-collapsing.
-  await chrome.tabGroups.update(groupId, { collapsed: false });
-  await chrome.tabGroups.update(groupId, { collapsed: true });
+async function updateGroup(groupId, props) {
+  await chrome.tabGroups.update(groupId, props);
 }
 
 async function findOrCreateGroup(name, color, windowId, groupCache) {
