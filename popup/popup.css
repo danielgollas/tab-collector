@@ -1,0 +1,345 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 400px;
+  min-height: 200px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: #1a1a1a;
+  background: #fafafa;
+  padding: 12px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0 6px;
+}
+
+/* ── Settings bar ─────────────────────────────── */
+
+.settings-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+/* Toggle switch */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+}
+
+.toggle input { display: none; }
+
+.slider {
+  width: 32px;
+  height: 18px;
+  background: #ccc;
+  border-radius: 9px;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.slider::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+
+.toggle input:checked + .slider {
+  background: #4285f4;
+}
+
+.toggle input:checked + .slider::after {
+  transform: translateX(14px);
+}
+
+/* ── Buttons ──────────────────────────────────── */
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 6px 12px;
+  transition: background 0.15s;
+}
+
+#btn-group-now {
+  background: #4285f4;
+  color: #fff;
+  font-weight: 500;
+}
+
+#btn-group-now:hover {
+  background: #3367d6;
+}
+
+.btn-add {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  background: #f1f3f4;
+  color: #4285f4;
+  font-weight: 500;
+  border: 1px dashed #4285f4;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.btn-add:hover {
+  background: #e8f0fe;
+}
+
+.btn-add-sm {
+  background: none;
+  color: #4285f4;
+  font-weight: 500;
+  padding: 4px 0;
+}
+
+.btn-primary {
+  background: #4285f4;
+  color: #fff;
+  font-weight: 500;
+  padding: 8px 20px;
+}
+
+.btn-primary:hover {
+  background: #3367d6;
+}
+
+.btn-secondary {
+  background: #f1f3f4;
+  color: #333;
+  padding: 8px 20px;
+}
+
+.btn-secondary:hover {
+  background: #e0e0e0;
+}
+
+.btn-danger {
+  background: none;
+  color: #d93025;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.btn-danger:hover {
+  background: #fce8e6;
+}
+
+/* ── Rule set cards ───────────────────────────── */
+
+.ruleset-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ruleset-card .color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ruleset-card .info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ruleset-card .name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.ruleset-card .meta {
+  font-size: 11px;
+  color: #666;
+}
+
+.ruleset-card .actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ruleset-card .actions button {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #f1f3f4;
+  color: #333;
+}
+
+.ruleset-card .actions button:hover {
+  background: #e0e0e0;
+}
+
+.ruleset-card.disabled {
+  opacity: 0.5;
+}
+
+/* ── Editor ───────────────────────────────────── */
+
+.hidden {
+  display: none !important;
+}
+
+#editor {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 14px;
+  margin-top: 10px;
+}
+
+.field {
+  margin-bottom: 8px;
+}
+
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 3px;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.field-row .field {
+  flex: 1;
+}
+
+/* ── Rule rows ────────────────────────────────── */
+
+.rule-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.rule-row select,
+.rule-row input[type="text"] {
+  padding: 4px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.rule-row select {
+  width: auto;
+}
+
+.rule-row input[type="text"] {
+  flex: 1;
+  min-width: 80px;
+}
+
+.rule-row .rule-remove {
+  background: none;
+  color: #999;
+  font-size: 16px;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.rule-row .rule-remove:hover {
+  color: #d93025;
+}
+
+.rule-row label.case-toggle {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
+/* Color map */
+.color-grey   { background: #9aa0a6; }
+.color-blue   { background: #4285f4; }
+.color-red    { background: #d93025; }
+.color-yellow { background: #f9ab00; }
+.color-green  { background: #34a853; }
+.color-pink   { background: #e8468a; }
+.color-purple { background: #a142f4; }
+.color-cyan   { background: #24c1e0; }
+.color-orange { background: #fa7b17; }
+
+/* ── Empty state ──────────────────────────────── */
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: #888;
+  font-size: 12px;
+}
