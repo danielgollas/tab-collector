@@ -19,14 +19,13 @@ async function getPageContent(tabId) {
 
 // ── Grouping logic ─────────────────────────────────────────────────
 
-async function updateGroup(groupId, props) {
-  // Chrome sometimes doesn't visually render the first update on a
-  // newly created group.  Setting a placeholder first forces a repaint
-  // so the real values are rendered reliably.
-  try {
-    await chrome.tabGroups.update(groupId, { title: " ", color: "grey", collapsed: false });
-  } catch { /* ignore */ }
-  await chrome.tabGroups.update(groupId, props);
+async function updateGroup(groupId, { collapsed, ...style }) {
+  // Apply title and color first while the group is still expanded so
+  // Chrome actually renders them, then collapse in a separate call.
+  await chrome.tabGroups.update(groupId, style);
+  if (collapsed) {
+    await chrome.tabGroups.update(groupId, { collapsed: true });
+  }
 }
 
 async function findOrCreateGroup(name, color, windowId, groupCache) {
