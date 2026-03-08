@@ -34,7 +34,12 @@ async function groupTab(tab, ruleSet, captures) {
     return; // already grouped
   }
 
-  const groupName = resolveGroupName(ruleSet.name, captures);
+  const template = ruleSet.groupName || ruleSet.name;
+  const groupName = resolveGroupName(template, captures);
+
+  // If the group title uses $N placeholders that didn't resolve (no captures),
+  // skip grouping — the tab didn't produce the required capture values
+  if (hasUnresolvedPlaceholders(groupName)) return;
 
   const existingGroupId = await findOrCreateGroup(
     groupName,

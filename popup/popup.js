@@ -11,6 +11,7 @@ const editorTitle = document.getElementById("editor-title");
 const rulesContainer = document.getElementById("rules-container");
 
 const nameInput = document.getElementById("rs-name");
+const groupNameInput = document.getElementById("rs-group-name");
 const colorSelect = document.getElementById("rs-color");
 const matchModeSelect = document.getElementById("rs-match-mode");
 const priorityInput = document.getElementById("rs-priority");
@@ -56,7 +57,7 @@ async function renderList() {
     card.innerHTML = `
       <div class="color-dot color-${rs.color || "grey"}"></div>
       <div class="info">
-        <div class="name">${escapeHtml(rs.name)}</div>
+        <div class="name">${escapeHtml(rs.name)}${rs.groupName ? ` <span class="group-title-badge">${escapeHtml(rs.groupName)}</span>` : ""}</div>
         <div class="meta">${rs.rules.length} rule${rs.rules.length !== 1 ? "s" : ""} · ${rs.matchMode === "any" ? "OR" : "AND"} · priority ${rs.priority ?? 0}</div>
       </div>
       <div class="actions">
@@ -80,6 +81,7 @@ function openEditor(ruleSet) {
     editingId = ruleSet.id;
     editorTitle.textContent = "Edit Rule Set";
     nameInput.value = ruleSet.name;
+    groupNameInput.value = ruleSet.groupName || "";
     colorSelect.value = ruleSet.color || "grey";
     matchModeSelect.value = ruleSet.matchMode || "all";
     priorityInput.value = ruleSet.priority ?? 0;
@@ -88,6 +90,7 @@ function openEditor(ruleSet) {
     editingId = null;
     editorTitle.textContent = "New Rule Set";
     nameInput.value = "";
+    groupNameInput.value = "";
     colorSelect.value = "blue";
     matchModeSelect.value = "all";
     priorityInput.value = 0;
@@ -312,9 +315,11 @@ async function save() {
 
   const ruleSets = await getRuleSets();
 
+  const groupName = groupNameInput.value.trim();
   const entry = {
     id: editingId || generateId(),
     name,
+    groupName: groupName || undefined,
     color: colorSelect.value,
     matchMode: matchModeSelect.value,
     priority: parseInt(priorityInput.value, 10) || 0,

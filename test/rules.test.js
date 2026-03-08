@@ -1,6 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { testRule, matchRuleSet, resolveGroupName } = require("../rules");
+const { testRule, matchRuleSet, resolveGroupName, hasUnresolvedPlaceholders } = require("../rules");
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -298,5 +298,39 @@ describe("resolveGroupName", () => {
 
   it("replaces all occurrences of same placeholder", () => {
     assert.equal(resolveGroupName("$1 and $1", ["x"]), "x and x");
+  });
+});
+
+// ── hasUnresolvedPlaceholders ─────────────────────────────────────────
+
+describe("hasUnresolvedPlaceholders", () => {
+  it("returns false for plain text", () => {
+    assert.equal(hasUnresolvedPlaceholders("My Group"), false);
+  });
+
+  it("returns false for fully resolved name", () => {
+    assert.equal(hasUnresolvedPlaceholders("JIRA-1234"), false);
+  });
+
+  it("returns true when $1 remains unresolved", () => {
+    assert.equal(hasUnresolvedPlaceholders("$1"), true);
+  });
+
+  it("returns true when $N is partially unresolved", () => {
+    assert.equal(hasUnresolvedPlaceholders("anthropics and $3"), true);
+  });
+
+  it("returns false for dollar sign not followed by digit", () => {
+    assert.equal(hasUnresolvedPlaceholders("$money"), false);
+  });
+
+  it("integrates with resolveGroupName for missing captures", () => {
+    const resolved = resolveGroupName("$1", []);
+    assert.equal(hasUnresolvedPlaceholders(resolved), true);
+  });
+
+  it("integrates with resolveGroupName for present captures", () => {
+    const resolved = resolveGroupName("$1", ["PROJ-42"]);
+    assert.equal(hasUnresolvedPlaceholders(resolved), false);
   });
 });

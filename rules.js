@@ -80,7 +80,13 @@ function resolveGroupName(template, captures) {
   });
 }
 
+// Returns true if a resolved group name still contains $N placeholders,
+// meaning required captures were missing or out of range.
+function hasUnresolvedPlaceholders(resolved) {
+  return /\$\d+/.test(resolved);
+}
+
 // Export for Node.js tests; in service worker context this is a no-op
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { testRule, matchRuleSet, resolveGroupName };
+  module.exports = { testRule, matchRuleSet, resolveGroupName, hasUnresolvedPlaceholders };
 }

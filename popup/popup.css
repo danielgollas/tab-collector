@@ -198,6 +198,17 @@ button {
   font-size: 13px;
 }
 
+.group-title-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: #1a73e8;
+  background: #e8f0fe;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 4px;
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+}
+
 .ruleset-card .meta {
   font-size: 11px;
   color: #666;

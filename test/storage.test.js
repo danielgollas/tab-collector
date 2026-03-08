@@ -83,6 +83,7 @@ describe("rules.js in service worker context", () => {
     assert.equal(typeof context.testRule, "function");
     assert.equal(typeof context.matchRuleSet, "function");
     assert.equal(typeof context.resolveGroupName, "function");
+    assert.equal(typeof context.hasUnresolvedPlaceholders, "function");
   });
 
   it("exports via module.exports when module is available (Node.js)", () => {
@@ -92,5 +93,6 @@ describe("rules.js in service worker context", () => {
     assert.equal(typeof fakeModule.exports.testRule, "function");
     assert.equal(typeof fakeModule.exports.matchRuleSet, "function");
     assert.equal(typeof fakeModule.exports.resolveGroupName, "function");
+    assert.equal(typeof fakeModule.exports.hasUnresolvedPlaceholders, "function");
   });
 });

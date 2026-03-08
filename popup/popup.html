@@ -33,9 +33,14 @@
     <h2 id="editor-title">New Rule Set</h2>
 
     <div class="field">
-      <label for="rs-name">Group Name</label>
-      <input type="text" id="rs-name" placeholder="e.g. Work, Social, News">
-      <span class="hint">Use $1, $2… to insert regex capture groups</span>
+      <label for="rs-name">Rule Set Name</label>
+      <input type="text" id="rs-name" placeholder="e.g. Ticket Grouping, Social Media">
+    </div>
+
+    <div class="field">
+      <label for="rs-group-name">Group Title</label>
+      <input type="text" id="rs-group-name" placeholder="e.g. $1 or JIRA-$1 (leave blank to use name)">
+      <span class="hint">Use $1, $2… to insert regex captures. Each unique value creates a separate group.</span>
     </div>
 
     <div class="field-row">
