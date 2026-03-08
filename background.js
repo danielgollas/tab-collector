@@ -6,6 +6,8 @@ const { getRuleSets, getSettings } = globalThis.TabCollectorStorage;
 
 // ── Rule evaluation ────────────────────────────────────────────────
 
+// Returns { match: true/false, captures: [...] } for regex rules,
+// or just true/false for non-regex rules.
 function testRule(rule, tab, pageContent) {
   let subject;
   if (rule.field === "title") {
@@ -32,7 +34,9 @@ function testRule(rule, tab, pageContent) {
     case "regex":
       try {
         const re = new RegExp(rule.value, flags);
-        return re.test(subject);
+        const m = re.exec(subject);
+        if (!m) return false;
+        return { match: true, captures: m.slice(1) };
       } catch {
         return false;
       }
@@ -41,11 +45,36 @@ function testRule(rule, tab, pageContent) {
   }
 }
 
+// Returns false if no match, or an array of captured strings (may be empty)
+// from the first regex rule that produced captures.
 function matchRuleSet(ruleSet, tab, pageContent) {
   if (!ruleSet.enabled || ruleSet.rules.length === 0) return false;
 
-  const fn = ruleSet.matchMode === "any" ? "some" : "every";
-  return ruleSet.rules[fn]((rule) => testRule(rule, tab, pageContent));
+  const captures = [];
+
+  if (ruleSet.matchMode === "any") {
+    let anyMatch = false;
+    for (const rule of ruleSet.rules) {
+      const result = testRule(rule, tab, pageContent);
+      if (result) {
+        anyMatch = true;
+        if (result.captures && result.captures.length > 0 && captures.length === 0) {
+          captures.push(...result.captures);
+        }
+      }
+    }
+    if (!anyMatch) return false;
+  } else {
+    for (const rule of ruleSet.rules) {
+      const result = testRule(rule, tab, pageContent);
+      if (!result) return false;
+      if (result.captures && result.captures.length > 0 && captures.length === 0) {
+        captures.push(...result.captures);
+      }
+    }
+  }
+
+  return captures;
 }
 
 // ── Page content fetching via content script ───────────────────────
@@ -73,13 +102,23 @@ async function findOrCreateGroup(name, color, windowId) {
   return null;
 }
 
-async function groupTab(tab, ruleSet) {
+function resolveGroupName(template, captures) {
+  if (!captures || captures.length === 0) return template;
+  return template.replace(/\$(\d+)/g, (_, n) => {
+    const idx = parseInt(n, 10) - 1; // $1 → index 0
+    return idx >= 0 && idx < captures.length ? captures[idx] : _;
+  });
+}
+
+async function groupTab(tab, ruleSet, captures) {
   if (tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
     return; // already grouped
   }
 
+  const groupName = resolveGroupName(ruleSet.name, captures);
+
   const existingGroupId = await findOrCreateGroup(
-    ruleSet.name,
+    groupName,
     ruleSet.color,
     tab.windowId,
   );
@@ -89,7 +128,7 @@ async function groupTab(tab, ruleSet) {
   } else {
     const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
     await chrome.tabGroups.update(newGroupId, {
-      title: ruleSet.name,
+      title: groupName,
       color: ruleSet.color || "grey",
     });
   }
@@ -121,8 +160,9 @@ async function evaluateTab(tab) {
   );
 
   for (const ruleSet of sorted) {
-    if (matchRuleSet(ruleSet, tab, pageContent)) {
-      await groupTab(tab, ruleSet);
+    const captures = matchRuleSet(ruleSet, tab, pageContent);
+    if (captures !== false) {
+      await groupTab(tab, ruleSet, captures);
       return; // first matching rule set wins
     }
   }
