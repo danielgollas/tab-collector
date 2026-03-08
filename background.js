@@ -63,6 +63,10 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
     const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
+    // Small delay so Chrome finishes initialising the group internally;
+    // without this the title and color may not render until the user
+    // interacts with the group.
+    await new Promise((r) => setTimeout(r, 50));
     await chrome.tabGroups.update(newGroupId, {
       title: groupName,
       color,
