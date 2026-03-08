@@ -38,6 +38,10 @@
     "grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange",
   ];
 
+  function randomColor() {
+    return VALID_COLORS[Math.floor(Math.random() * VALID_COLORS.length)];
+  }
+
   function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
@@ -69,5 +73,6 @@
     saveSettings,
     DEFAULT_SETTINGS,
     VALID_COLORS,
+    randomColor,
   };
 })();

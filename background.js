@@ -2,7 +2,7 @@
 
 importScripts("storage.js", "rules.js");
 
-const { getRuleSets, getSettings } = globalThis.TabCollectorStorage;
+const { getRuleSets, getSettings, randomColor } = globalThis.TabCollectorStorage;
 
 // ── Page content fetching via content script ───────────────────────
 
@@ -57,13 +57,15 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
     groupCache,
   );
 
+  const color = ruleSet.color === "random" ? randomColor() : (ruleSet.color || "grey");
+
   if (existingGroupId) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
     const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
     await chrome.tabGroups.update(newGroupId, {
       title: groupName,
-      color: ruleSet.color || "grey",
+      color,
     });
     if (groupCache) groupCache.set(groupName, newGroupId);
   }

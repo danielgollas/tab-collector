@@ -536,6 +536,7 @@ mark.regex-highlight {
 .color-purple { background: #a142f4; }
 .color-cyan   { background: #24c1e0; }
 .color-orange { background: #fa7b17; }
+.color-random { background: conic-gradient(#d93025, #f9ab00, #34a853, #4285f4, #a142f4, #e8468a, #d93025); }
 
 /* ── Run button ───────────────────────────────── */
 
