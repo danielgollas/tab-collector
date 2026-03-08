@@ -1,0 +1,16 @@
+{
+  "name": "tab-collector",
+  "version": "1.0.0",
+  "description": "A Chrome extension that groups ungrouped tabs into named tab groups based on configurable rule sets. Works automatically in the background or on demand with a single click.",
+  "main": "background.js",
+  "scripts": {
+    "test": "node --test 'test/*.test.js'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:31986/git/danielgollas/tab-collector"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
