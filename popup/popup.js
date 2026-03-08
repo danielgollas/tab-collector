@@ -113,26 +113,172 @@ function renderRules(rules) {
 }
 
 function addRuleRow(rule) {
+  const isRegex = rule?.operator === "regex";
   const row = document.createElement("div");
-  row.className = "rule-row";
+  row.className = "rule-row" + (isRegex ? " rule-row-regex" : "");
   row.innerHTML = `
-    <select class="rule-field">
-      <option value="title" ${rule?.field === "title" ? "selected" : ""}>Title</option>
-      <option value="url" ${rule?.field === "url" ? "selected" : ""}>URL</option>
-      <option value="content" ${rule?.field === "content" ? "selected" : ""}>Content</option>
-    </select>
-    <select class="rule-operator">
-      <option value="contains" ${rule?.operator === "contains" ? "selected" : ""}>contains</option>
-      <option value="not_contains" ${rule?.operator === "not_contains" ? "selected" : ""}>not contains</option>
-      <option value="regex" ${rule?.operator === "regex" ? "selected" : ""}>regex</option>
-    </select>
-    <input type="text" class="rule-value" placeholder="value or /regex/" value="${escapeAttr(rule?.value || "")}">
-    <label class="case-toggle">
-      <input type="checkbox" class="rule-case" ${rule?.caseSensitive ? "checked" : ""}> Aa
-    </label>
-    <button class="rule-remove" title="Remove rule">&times;</button>
+    <div class="rule-row-main">
+      <select class="rule-field">
+        <option value="title" ${rule?.field === "title" ? "selected" : ""}>Title</option>
+        <option value="url" ${rule?.field === "url" ? "selected" : ""}>URL</option>
+        <option value="content" ${rule?.field === "content" ? "selected" : ""}>Content</option>
+      </select>
+      <select class="rule-operator">
+        <option value="contains" ${rule?.operator === "contains" ? "selected" : ""}>contains</option>
+        <option value="not_contains" ${rule?.operator === "not_contains" ? "selected" : ""}>not contains</option>
+        <option value="regex" ${rule?.operator === "regex" ? "selected" : ""}>regex</option>
+      </select>
+      <label class="case-toggle">
+        <input type="checkbox" class="rule-case" ${rule?.caseSensitive ? "checked" : ""}> Aa
+      </label>
+      <button class="rule-remove" title="Remove rule">&times;</button>
+    </div>
+    <div class="rule-value-wrap ${isRegex ? "rule-value-regex" : ""}">
+      ${isRegex
+        ? `<textarea class="rule-value rule-value-lg" placeholder="Regular expression" spellcheck="false">${escapeHtml(rule?.value || "")}</textarea>`
+        : `<input type="text" class="rule-value" placeholder="value" value="${escapeAttr(rule?.value || "")}">`
+      }
+    </div>
+    <div class="regex-tester hidden">
+      <div class="regex-tester-header">
+        <span class="regex-tester-label">Test String</span>
+        <span class="regex-tester-status"></span>
+      </div>
+      <textarea class="regex-test-input" placeholder="Type a test string to match against..." spellcheck="false"></textarea>
+      <div class="regex-match-result hidden">
+        <div class="regex-match-highlighted"></div>
+        <div class="regex-captures"></div>
+        <div class="regex-match-info"></div>
+      </div>
+    </div>
   `;
   rulesContainer.appendChild(row);
+
+  // Wire up operator change to toggle regex mode
+  const operatorSelect = row.querySelector(".rule-operator");
+  operatorSelect.addEventListener("change", () => {
+    toggleRegexMode(row, operatorSelect.value === "regex");
+  });
+
+  // If already regex, show tester and wire up live matching
+  if (isRegex) {
+    showRegexTester(row);
+  }
+}
+
+function toggleRegexMode(row, isRegex) {
+  const valueWrap = row.querySelector(".rule-value-wrap");
+  const oldValue = row.querySelector(".rule-value").value;
+
+  if (isRegex) {
+    row.classList.add("rule-row-regex");
+    valueWrap.classList.add("rule-value-regex");
+    valueWrap.innerHTML = `<textarea class="rule-value rule-value-lg" placeholder="Regular expression" spellcheck="false">${escapeHtml(oldValue)}</textarea>`;
+    showRegexTester(row);
+  } else {
+    row.classList.remove("rule-row-regex");
+    valueWrap.classList.remove("rule-value-regex");
+    valueWrap.innerHTML = `<input type="text" class="rule-value" placeholder="value" value="${escapeAttr(oldValue)}">`;
+    hideRegexTester(row);
+  }
+}
+
+function showRegexTester(row) {
+  const tester = row.querySelector(".regex-tester");
+  tester.classList.remove("hidden");
+
+  const patternInput = row.querySelector(".rule-value");
+  const testInput = tester.querySelector(".regex-test-input");
+  const caseCheckbox = row.querySelector(".rule-case");
+  const status = tester.querySelector(".regex-tester-status");
+  const resultPanel = tester.querySelector(".regex-match-result");
+  const highlighted = tester.querySelector(".regex-match-highlighted");
+  const capturesEl = tester.querySelector(".regex-captures");
+  const infoEl = tester.querySelector(".regex-match-info");
+
+  function runTest() {
+    const pattern = patternInput.value;
+    const testStr = testInput.value;
+    const caseSensitive = caseCheckbox.checked;
+
+    if (!pattern || !testStr) {
+      status.textContent = "";
+      status.className = "regex-tester-status";
+      resultPanel.classList.add("hidden");
+      return;
+    }
+
+    let re;
+    try {
+      re = new RegExp(pattern, caseSensitive ? "g" : "gi");
+    } catch (e) {
+      status.textContent = "Invalid regex";
+      status.className = "regex-tester-status status-error";
+      resultPanel.classList.add("hidden");
+      return;
+    }
+
+    const matches = [];
+    let m;
+    let firstCaptures = null;
+    while ((m = re.exec(testStr)) !== null) {
+      matches.push({ index: m.index, length: m[0].length, groups: m.slice(1) });
+      if (!firstCaptures && m.slice(1).length > 0) {
+        firstCaptures = m.slice(1);
+      }
+      if (!m[0].length) { re.lastIndex++; } // prevent infinite loop on zero-length match
+    }
+
+    if (matches.length === 0) {
+      status.textContent = "No match";
+      status.className = "regex-tester-status status-no-match";
+      resultPanel.classList.add("hidden");
+      return;
+    }
+
+    status.textContent = `${matches.length} match${matches.length !== 1 ? "es" : ""}`;
+    status.className = "regex-tester-status status-match";
+    resultPanel.classList.remove("hidden");
+
+    // Build highlighted string
+    let html = "";
+    let lastEnd = 0;
+    for (const match of matches) {
+      html += escapeHtml(testStr.slice(lastEnd, match.index));
+      html += `<mark class="regex-highlight">${escapeHtml(testStr.slice(match.index, match.index + match.length))}</mark>`;
+      lastEnd = match.index + match.length;
+    }
+    html += escapeHtml(testStr.slice(lastEnd));
+    highlighted.innerHTML = html;
+
+    // Show captures from first match
+    if (firstCaptures && firstCaptures.length > 0) {
+      capturesEl.innerHTML = "<span class='captures-label'>Captures:</span> " +
+        firstCaptures.map((c, i) =>
+          `<span class="capture-group"><span class="capture-index">$${i + 1}</span><span class="capture-value">${escapeHtml(c)}</span></span>`
+        ).join(" ");
+      capturesEl.classList.remove("hidden");
+    } else {
+      capturesEl.innerHTML = "";
+      capturesEl.classList.add("hidden");
+    }
+
+    // Match info
+    const first = matches[0];
+    infoEl.textContent = `First match at index ${first.index}, length ${first.length}`;
+  }
+
+  patternInput.addEventListener("input", runTest);
+  testInput.addEventListener("input", runTest);
+  caseCheckbox.addEventListener("change", runTest);
+
+  // Run immediately if there's already a value
+  runTest();
+}
+
+function hideRegexTester(row) {
+  const tester = row.querySelector(".regex-tester");
+  tester.classList.add("hidden");
 }
 
 function collectRules() {

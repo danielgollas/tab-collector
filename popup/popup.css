@@ -279,12 +279,25 @@ button {
 
 .rule-row {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.rule-row-regex {
+  border-color: #c8d6e5;
+  background: #f0f4f8;
+}
+
+.rule-row-main {
+  display: flex;
   gap: 6px;
   align-items: center;
-  margin-bottom: 6px;
-  padding: 6px 8px;
-  background: #f8f9fa;
-  border-radius: 4px;
 }
 
 .rule-row select,
@@ -299,9 +312,42 @@ button {
   width: auto;
 }
 
-.rule-row input[type="text"] {
+.rule-value-wrap {
+  display: flex;
+}
+
+.rule-value-wrap input[type="text"] {
   flex: 1;
   min-width: 80px;
+  padding: 4px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.rule-value-regex {
+  flex-direction: column;
+}
+
+.rule-value-lg {
+  width: 100%;
+  min-height: 56px;
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border: 1px solid #c8d6e5;
+  border-radius: 4px;
+  resize: vertical;
+  background: #fff;
+  color: #2d3436;
+  tab-size: 2;
+}
+
+.rule-value-lg:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15);
 }
 
 .rule-row .rule-remove {
@@ -322,6 +368,144 @@ button {
   align-items: center;
   gap: 3px;
   white-space: nowrap;
+}
+
+/* ── Regex tester (inline regex101) ──────────── */
+
+.regex-tester {
+  border-top: 1px solid #dde3ea;
+  padding-top: 8px;
+  margin-top: 2px;
+}
+
+.regex-tester-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.regex-tester-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.regex-tester-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+
+.status-match {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.status-no-match {
+  background: #fce8e6;
+  color: #d93025;
+}
+
+.status-error {
+  background: #fce8e6;
+  color: #d93025;
+}
+
+.regex-test-input {
+  width: 100%;
+  min-height: 44px;
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 6px 8px;
+  border: 1px solid #dde3ea;
+  border-radius: 4px;
+  resize: vertical;
+  background: #fff;
+}
+
+.regex-test-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.15);
+}
+
+.regex-match-result {
+  margin-top: 6px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.regex-match-highlighted {
+  padding: 8px 10px;
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+mark.regex-highlight {
+  background: #fbbc04;
+  color: #1a1a1a;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+.regex-captures {
+  padding: 6px 10px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.captures-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.capture-group {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #d2e3fc;
+}
+
+.capture-index {
+  background: #4285f4;
+  color: #fff;
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 5px;
+}
+
+.capture-value {
+  background: #e8f0fe;
+  color: #1a73e8;
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.regex-match-info {
+  padding: 4px 10px 6px;
+  font-size: 10px;
+  color: #888;
+  border-top: 1px solid #f0f0f0;
 }
 
 .editor-actions {
