@@ -11,6 +11,7 @@
     <h1>Tab Collector</h1>
     <div class="header-actions">
       <button id="btn-group-now" title="Group all ungrouped tabs now">Group Now</button>
+      <button id="btn-json" title="Edit all rule sets as JSON">JSON</button>
     </div>
   </header>
 
@@ -75,6 +76,20 @@
       <button id="btn-save" class="btn-primary">Save</button>
       <button id="btn-cancel" class="btn-secondary">Cancel</button>
     </div>
+  </section>
+
+  <!-- JSON editor (hidden by default) -->
+  <section id="json-editor" class="hidden">
+    <h2>JSON Editor</h2>
+    <textarea id="json-textarea" spellcheck="false"></textarea>
+    <div id="json-error" class="json-error hidden"></div>
+    <div class="editor-actions">
+      <button id="btn-json-import" class="btn-secondary">Import</button>
+      <button id="btn-json-export" class="btn-secondary">Export</button>
+      <button id="btn-json-save" class="btn-primary">Save</button>
+      <button id="btn-json-cancel" class="btn-secondary">Cancel</button>
+    </div>
+    <input type="file" id="json-file-input" accept=".json" class="hidden">
   </section>
 
   <script src="../storage.js"></script>

@@ -5,6 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const storageSrc = fs.readFileSync(path.join(__dirname, "..", "storage.js"), "utf8");
+const rulesSrc = fs.readFileSync(path.join(__dirname, "..", "rules.js"), "utf8");
 
 describe("storage.js isolation", () => {
   let context;
@@ -71,5 +72,25 @@ describe("storage.js isolation", () => {
         context,
       );
     });
+  });
+});
+
+describe("rules.js in service worker context", () => {
+  it("exposes testRule, matchRuleSet, resolveGroupName as globals (importScripts behavior)", () => {
+    // importScripts runs code in the global scope, so top-level functions become globals
+    const context = vm.createContext({ module: undefined });
+    vm.runInContext(rulesSrc, context);
+    assert.equal(typeof context.testRule, "function");
+    assert.equal(typeof context.matchRuleSet, "function");
+    assert.equal(typeof context.resolveGroupName, "function");
+  });
+
+  it("exports via module.exports when module is available (Node.js)", () => {
+    const fakeModule = { exports: {} };
+    const context = vm.createContext({ module: fakeModule });
+    vm.runInContext(rulesSrc, context);
+    assert.equal(typeof fakeModule.exports.testRule, "function");
+    assert.equal(typeof fakeModule.exports.matchRuleSet, "function");
+    assert.equal(typeof fakeModule.exports.resolveGroupName, "function");
   });
 });

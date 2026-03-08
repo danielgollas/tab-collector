@@ -94,6 +94,30 @@ async function evaluateAllTabs() {
   }
 }
 
+async function runSingleRuleSet(ruleSetId) {
+  const ruleSets = await getRuleSets();
+  const ruleSet = ruleSets.find((rs) => rs.id === ruleSetId);
+  if (!ruleSet) return;
+
+  const tabs = await chrome.tabs.query({});
+  const needsContent = ruleSet.rules.some((r) => r.field === "content");
+
+  for (const tab of tabs) {
+    if (tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) continue;
+    if (!tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) continue;
+
+    let pageContent = "";
+    if (needsContent) {
+      pageContent = await getPageContent(tab.id);
+    }
+
+    const captures = matchRuleSet(ruleSet, tab, pageContent);
+    if (captures !== false) {
+      await groupTab(tab, ruleSet, captures);
+    }
+  }
+}
+
 // ── Event listeners ────────────────────────────────────────────────
 
 // When a tab finishes loading
@@ -127,6 +151,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.tabs.get(message.tabId).then((tab) => {
       evaluateTab(tab).then(() => sendResponse({ success: true }));
     });
+    return true;
+  }
+
+  if (message.type === "RUN_RULESET") {
+    runSingleRuleSet(message.ruleSetId).then(() => sendResponse({ success: true }));
     return true;
   }
 });

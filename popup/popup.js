@@ -22,6 +22,16 @@ const btnCancel = document.getElementById("btn-cancel");
 const btnGroupNow = document.getElementById("btn-group-now");
 const toggleAuto = document.getElementById("toggle-auto");
 
+const btnJson = document.getElementById("btn-json");
+const jsonEditor = document.getElementById("json-editor");
+const jsonTextarea = document.getElementById("json-textarea");
+const jsonError = document.getElementById("json-error");
+const btnJsonSave = document.getElementById("btn-json-save");
+const btnJsonCancel = document.getElementById("btn-json-cancel");
+const btnJsonImport = document.getElementById("btn-json-import");
+const btnJsonExport = document.getElementById("btn-json-export");
+const jsonFileInput = document.getElementById("json-file-input");
+
 let editingId = null; // null = new, otherwise editing existing
 
 // ── Render rule set list ───────────────────────────────────────────
@@ -50,6 +60,7 @@ async function renderList() {
         <div class="meta">${rs.rules.length} rule${rs.rules.length !== 1 ? "s" : ""} · ${rs.matchMode === "any" ? "OR" : "AND"} · priority ${rs.priority ?? 0}</div>
       </div>
       <div class="actions">
+        <button data-action="run" data-id="${rs.id}" class="btn-run" title="Run this rule set now">Run</button>
         <button data-action="toggle" data-id="${rs.id}">${rs.enabled ? "Disable" : "Enable"}</button>
         <button data-action="edit" data-id="${rs.id}">Edit</button>
         <button data-action="delete" data-id="${rs.id}" class="btn-danger">Del</button>
@@ -213,7 +224,14 @@ listSection.addEventListener("click", async (e) => {
   const id = btn.dataset.id;
   const ruleSets = await getRuleSets();
 
-  if (action === "toggle") {
+  if (action === "run") {
+    btn.textContent = "...";
+    btn.disabled = true;
+    await chrome.runtime.sendMessage({ type: "RUN_RULESET", ruleSetId: id });
+    btn.textContent = "Done!";
+    setTimeout(() => { btn.textContent = "Run"; btn.disabled = false; }, 1200);
+    return;
+  } else if (action === "toggle") {
     const rs = ruleSets.find((r) => r.id === id);
     if (rs) rs.enabled = !rs.enabled;
     await saveRuleSets(ruleSets);
@@ -232,6 +250,88 @@ rulesContainer.addEventListener("click", (e) => {
   if (e.target.closest(".rule-remove")) {
     e.target.closest(".rule-row").remove();
   }
+});
+
+// ── JSON editor ─────────────────────────────────────────────────────
+
+function openJsonEditor(json) {
+  jsonEditor.classList.remove("hidden");
+  listSection.classList.add("hidden");
+  btnAddRuleSet.classList.add("hidden");
+  editor.classList.add("hidden");
+  jsonError.classList.add("hidden");
+  jsonTextarea.value = json;
+}
+
+function closeJsonEditor() {
+  jsonEditor.classList.add("hidden");
+  listSection.classList.remove("hidden");
+  btnAddRuleSet.classList.remove("hidden");
+}
+
+btnJson.addEventListener("click", async () => {
+  const ruleSets = await getRuleSets();
+  openJsonEditor(JSON.stringify(ruleSets, null, 2));
+});
+
+btnJsonCancel.addEventListener("click", () => {
+  closeJsonEditor();
+});
+
+btnJsonSave.addEventListener("click", async () => {
+  jsonError.classList.add("hidden");
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonTextarea.value);
+  } catch (e) {
+    jsonError.textContent = "Invalid JSON: " + e.message;
+    jsonError.classList.remove("hidden");
+    return;
+  }
+  if (!Array.isArray(parsed)) {
+    jsonError.textContent = "JSON must be an array of rule sets.";
+    jsonError.classList.remove("hidden");
+    return;
+  }
+  // Ensure every rule set has an id
+  for (const rs of parsed) {
+    if (!rs.id) rs.id = generateId();
+    if (rs.enabled === undefined) rs.enabled = true;
+    if (rs.rules) {
+      for (const rule of rs.rules) {
+        if (!rule.id) rule.id = generateId();
+      }
+    }
+  }
+  await saveRuleSets(parsed);
+  closeJsonEditor();
+  await renderList();
+});
+
+btnJsonExport.addEventListener("click", () => {
+  const blob = new Blob([jsonTextarea.value], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tab-collector-rules.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+btnJsonImport.addEventListener("click", () => {
+  jsonFileInput.click();
+});
+
+jsonFileInput.addEventListener("change", () => {
+  const file = jsonFileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    jsonTextarea.value = reader.result;
+    jsonError.classList.add("hidden");
+  };
+  reader.readAsText(file);
+  jsonFileInput.value = "";
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────
