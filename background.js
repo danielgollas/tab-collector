@@ -62,25 +62,15 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
   if (existingGroupId) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
-    // Register a one-time onCreated listener BEFORE creating the group,
-    // so Chrome applies the style from its own event callback.
-    const styled = new Promise((resolve) => {
-      const handler = async (group) => {
-        chrome.tabGroups.onCreated.removeListener(handler);
-        try {
-          await chrome.tabGroups.update(group.id, {
-            title: groupName,
-            color,
-            collapsed: true,
-          });
-        } catch { /* ignore */ }
-        resolve(group.id);
-      };
-      chrome.tabGroups.onCreated.addListener(handler);
+    const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
+    // Small delay before updating — workaround for Chrome rendering bug
+    // where title/color don't visually apply on newly created groups.
+    await new Promise((r) => setTimeout(r, 150));
+    await chrome.tabGroups.update(newGroupId, {
+      title: groupName,
+      color,
+      collapsed: true,
     });
-
-    chrome.tabs.group({ tabIds: [tab.id] });
-    const newGroupId = await styled;
     if (groupCache) groupCache.set(groupName, newGroupId);
   }
 }
