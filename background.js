@@ -19,17 +19,26 @@ async function getPageContent(tabId) {
 
 // ── Grouping logic ─────────────────────────────────────────────────
 
-async function findOrCreateGroup(name, color, windowId) {
+async function findOrCreateGroup(name, color, windowId, groupCache) {
+  // Check in-memory cache first (for batch operations where Chrome API
+  // may not yet reflect newly created groups)
+  if (groupCache) {
+    const cached = groupCache.get(name);
+    if (cached !== undefined) return cached;
+  }
+
   // Look for an existing group with this name in the same window
   const groups = await chrome.tabGroups.query({ windowId });
   const existing = groups.find((g) => g.title === name);
-  if (existing) return existing.id;
+  if (existing) {
+    if (groupCache) groupCache.set(name, existing.id);
+    return existing.id;
+  }
 
-  // No existing group — we'll create one when we group the first tab
   return null;
 }
 
-async function groupTab(tab, ruleSet, captures) {
+async function groupTab(tab, ruleSet, captures, groupCache) {
   if (tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
     return; // already grouped
   }
@@ -45,6 +54,7 @@ async function groupTab(tab, ruleSet, captures) {
     groupName,
     ruleSet.color,
     tab.windowId,
+    groupCache,
   );
 
   if (existingGroupId) {
@@ -55,10 +65,11 @@ async function groupTab(tab, ruleSet, captures) {
       title: groupName,
       color: ruleSet.color || "grey",
     });
+    if (groupCache) groupCache.set(groupName, newGroupId);
   }
 }
 
-async function evaluateTab(tab) {
+async function evaluateTab(tab, groupCache) {
   const ruleSets = await getRuleSets();
   if (ruleSets.length === 0) return;
 
@@ -86,16 +97,17 @@ async function evaluateTab(tab) {
   for (const ruleSet of sorted) {
     const captures = matchRuleSet(ruleSet, tab, pageContent);
     if (captures !== false) {
-      await groupTab(tab, ruleSet, captures);
+      await groupTab(tab, ruleSet, captures, groupCache);
       return; // first matching rule set wins
     }
   }
 }
 
 async function evaluateAllTabs() {
+  const groupCache = new Map();
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    await evaluateTab(tab);
+    await evaluateTab(tab, groupCache);
   }
 }
 
@@ -104,6 +116,7 @@ async function runSingleRuleSet(ruleSetId) {
   const ruleSet = ruleSets.find((rs) => rs.id === ruleSetId);
   if (!ruleSet) return;
 
+  const groupCache = new Map();
   const tabs = await chrome.tabs.query({});
   const needsContent = ruleSet.rules.some((r) => r.field === "content");
 
@@ -118,7 +131,7 @@ async function runSingleRuleSet(ruleSetId) {
 
     const captures = matchRuleSet(ruleSet, tab, pageContent);
     if (captures !== false) {
-      await groupTab(tab, ruleSet, captures);
+      await groupTab(tab, ruleSet, captures, groupCache);
     }
   }
 }
