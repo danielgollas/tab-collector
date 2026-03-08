@@ -28,39 +28,39 @@
  * }
  */
 
-const DEFAULT_SETTINGS = {
-  autoGroup: false,
-  groupExisting: true,
-};
+(() => {
+  const DEFAULT_SETTINGS = {
+    autoGroup: false,
+    groupExisting: true,
+  };
 
-const VALID_COLORS = [
-  "grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange",
-];
+  const VALID_COLORS = [
+    "grey", "blue", "red", "yellow", "green", "pink", "purple", "cyan", "orange",
+  ];
 
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
 
-async function getRuleSets() {
-  const { ruleSets = [] } = await chrome.storage.local.get("ruleSets");
-  return ruleSets;
-}
+  async function getRuleSets() {
+    const { ruleSets = [] } = await chrome.storage.local.get("ruleSets");
+    return ruleSets;
+  }
 
-async function saveRuleSets(ruleSets) {
-  await chrome.storage.local.set({ ruleSets });
-}
+  async function saveRuleSets(ruleSets) {
+    await chrome.storage.local.set({ ruleSets });
+  }
 
-async function getSettings() {
-  const { settings } = await chrome.storage.local.get("settings");
-  return { ...DEFAULT_SETTINGS, ...settings };
-}
+  async function getSettings() {
+    const { settings } = await chrome.storage.local.get("settings");
+    return { ...DEFAULT_SETTINGS, ...settings };
+  }
 
-async function saveSettings(settings) {
-  await chrome.storage.local.set({ settings });
-}
+  async function saveSettings(settings) {
+    await chrome.storage.local.set({ settings });
+  }
 
-// Exported for use by background.js and popup
-if (typeof globalThis !== "undefined") {
+  // Exported for use by background.js and popup
   globalThis.TabCollectorStorage = {
     generateId,
     getRuleSets,
@@ -70,4 +70,4 @@ if (typeof globalThis !== "undefined") {
     DEFAULT_SETTINGS,
     VALID_COLORS,
   };
-}
+})();
