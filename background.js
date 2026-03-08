@@ -19,10 +19,6 @@ async function getPageContent(tabId) {
 
 // ── Grouping logic ─────────────────────────────────────────────────
 
-async function updateGroup(groupId, props) {
-  await chrome.tabGroups.update(groupId, props);
-}
-
 async function findOrCreateGroup(name, color, windowId, groupCache) {
   // Check in-memory cache first (for batch operations where Chrome API
   // may not yet reflect newly created groups)
@@ -66,12 +62,25 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
   if (existingGroupId) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
-    const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
-    await updateGroup(newGroupId, {
-      title: groupName,
-      color,
-      collapsed: true,
+    // Register a one-time onCreated listener BEFORE creating the group,
+    // so Chrome applies the style from its own event callback.
+    const styled = new Promise((resolve) => {
+      const handler = async (group) => {
+        chrome.tabGroups.onCreated.removeListener(handler);
+        try {
+          await chrome.tabGroups.update(group.id, {
+            title: groupName,
+            color,
+            collapsed: true,
+          });
+        } catch { /* ignore */ }
+        resolve(group.id);
+      };
+      chrome.tabGroups.onCreated.addListener(handler);
     });
+
+    chrome.tabs.group({ tabIds: [tab.id] });
+    const newGroupId = await styled;
     if (groupCache) groupCache.set(groupName, newGroupId);
   }
 }
