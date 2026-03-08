@@ -1,7 +1,11 @@
 // popup.js — UI logic for managing rule sets
 
 const { generateId, getRuleSets, saveRuleSets, getSettings, saveSettings } =
-  globalThis.TabCollectorStorage;
+  globalThis.TabCollectorStorage || {};
+
+if (!globalThis.TabCollectorStorage) {
+  console.error("TabCollectorStorage not found — storage.js may have failed to load");
+}
 
 // ── DOM refs ───────────────────────────────────────────────────────
 
