@@ -19,6 +19,18 @@ async function getPageContent(tabId) {
 
 // ── Grouping logic ─────────────────────────────────────────────────
 
+async function updateGroupWithRetry(groupId, props, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    await new Promise((r) => setTimeout(r, 50 * (i + 1)));
+    try {
+      await chrome.tabGroups.update(groupId, props);
+      // Verify the update actually applied
+      const group = await chrome.tabGroups.get(groupId);
+      if (group.title === props.title && group.color === props.color) return;
+    } catch { /* group may not be ready yet */ }
+  }
+}
+
 async function findOrCreateGroup(name, color, windowId, groupCache) {
   // Check in-memory cache first (for batch operations where Chrome API
   // may not yet reflect newly created groups)
@@ -63,13 +75,10 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
     const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
-    // Small delay so Chrome finishes initialising the group internally;
-    // without this the title and color may not render until the user
-    // interacts with the group.
-    await new Promise((r) => setTimeout(r, 50));
-    await chrome.tabGroups.update(newGroupId, {
+    await updateGroupWithRetry(newGroupId, {
       title: groupName,
       color,
+      collapsed: true,
     });
     if (groupCache) groupCache.set(groupName, newGroupId);
   }
