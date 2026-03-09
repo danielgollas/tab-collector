@@ -60,6 +60,7 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
   );
 
   const color = ruleSet.color === "random" ? randomColor() : (ruleSet.color || "grey");
+  console.log("[tab-collector] ruleSet:", JSON.stringify({ name: ruleSet.name, color: ruleSet.color, rawColor: typeof ruleSet.color }));
 
   if (existingGroupId) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
