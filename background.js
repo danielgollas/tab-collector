@@ -17,8 +17,6 @@ async function getPageContent(tabId) {
   }
 }
 
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-
 // ── Grouping logic ─────────────────────────────────────────────────
 
 async function findOrCreateGroup(name, color, windowId, groupCache) {
@@ -60,30 +58,12 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
   );
 
   const color = ruleSet.color === "random" ? randomColor() : (ruleSet.color || "grey");
-  console.log("[tab-collector] ruleSet:", JSON.stringify({ name: ruleSet.name, color: ruleSet.color, rawColor: typeof ruleSet.color }));
 
   if (existingGroupId) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
     const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
-    console.log("[tab-collector] created group", newGroupId, "want:", { title: groupName, color });
-
-    // Set title and color together
-    await chrome.tabGroups.update(newGroupId, { title: groupName, color });
-    console.log("[tab-collector] properties set");
-
-    // Wait for Chrome to process the update before collapsing
-    await delay(100);
-
-    // Collapse → expand → collapse with delays to force Chrome to
-    // repaint the group chip (works around a Chrome rendering bug)
-    await chrome.tabGroups.update(newGroupId, { collapsed: true });
-    await delay(50);
-    await chrome.tabGroups.update(newGroupId, { collapsed: false });
-    await delay(50);
-    await chrome.tabGroups.update(newGroupId, { collapsed: true });
-
-    console.log("[tab-collector] group ready");
+    await chrome.tabGroups.update(newGroupId, { title: groupName, color, collapsed: true });
     if (groupCache) groupCache.set(groupName, newGroupId);
   }
 }
