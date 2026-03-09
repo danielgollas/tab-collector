@@ -17,6 +17,31 @@ async function getPageContent(tabId) {
   }
 }
 
+// ── Pending group updates (applied via onCreated event) ────────────
+
+const pendingGroupUpdates = new Map();
+
+chrome.tabGroups.onCreated.addListener(async (group) => {
+  const pending = pendingGroupUpdates.get(group.id);
+  if (!pending) return;
+  pendingGroupUpdates.delete(group.id);
+
+  try {
+    await chrome.tabGroups.update(group.id, {
+      title: pending.title,
+      color: pending.color,
+    });
+  } catch { /* group may already be gone */ }
+
+  if (pending.collapsed) {
+    try {
+      await chrome.tabGroups.update(group.id, { collapsed: true });
+    } catch { /* ignore */ }
+  }
+
+  pending.resolve();
+});
+
 // ── Grouping logic ─────────────────────────────────────────────────
 
 async function findOrCreateGroup(name, color, windowId, groupCache) {
@@ -62,29 +87,36 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
   if (existingGroupId) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
+    // Register the desired title/color/collapsed BEFORE creating the group
+    // so the onCreated listener can apply them as soon as Chrome fires it.
+    let resolve;
+    const ready = new Promise((r) => { resolve = r; });
+
     const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
 
-    // Small delay to let Chrome fully initialize the new group internally
-    await new Promise((r) => setTimeout(r, 50));
-
-    // Apply title and color, retrying once if the group isn't ready
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        await chrome.tabGroups.update(newGroupId, { title: groupName, color });
-        // Verify the update actually stuck
-        const updated = await chrome.tabGroups.get(newGroupId);
-        if (updated.title === groupName && updated.color === color) break;
-        // Title/color didn't apply — wait and retry
-        await new Promise((r) => setTimeout(r, 100));
-      } catch {
-        if (attempt === 0) await new Promise((r) => setTimeout(r, 100));
-      }
+    // If onCreated already fired synchronously (unlikely), check first
+    if (!pendingGroupUpdates.has(newGroupId)) {
+      pendingGroupUpdates.set(newGroupId, {
+        title: groupName,
+        color,
+        collapsed: true,
+        resolve,
+      });
     }
 
-    // Collapse in a separate call after title/color are confirmed
+    // Also try updating directly as a fallback — whichever path
+    // Chrome honours first wins; the other is a harmless no-op.
+    try {
+      await chrome.tabGroups.update(newGroupId, { title: groupName, color });
+    } catch { /* handled by onCreated path */ }
+
+    // Wait up to 500ms for the onCreated path to finish, then move on
+    await Promise.race([ready, new Promise((r) => setTimeout(r, 500))]);
+    pendingGroupUpdates.delete(newGroupId);
+
     try {
       await chrome.tabGroups.update(newGroupId, { collapsed: true });
-    } catch { /* group may have been closed by user */ }
+    } catch { /* group may have been closed */ }
 
     if (groupCache) groupCache.set(groupName, newGroupId);
   }
