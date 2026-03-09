@@ -63,11 +63,29 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
     await chrome.tabs.group({ tabIds: [tab.id], groupId: existingGroupId });
   } else {
     const newGroupId = await chrome.tabs.group({ tabIds: [tab.id] });
-    // Apply title and color first while the group is expanded, then
-    // collapse in a separate call.  Setting all three at once on a
-    // brand-new group can cause Chrome to skip rendering the title/color.
-    await chrome.tabGroups.update(newGroupId, { title: groupName, color });
-    await chrome.tabGroups.update(newGroupId, { collapsed: true });
+
+    // Small delay to let Chrome fully initialize the new group internally
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Apply title and color, retrying once if the group isn't ready
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await chrome.tabGroups.update(newGroupId, { title: groupName, color });
+        // Verify the update actually stuck
+        const updated = await chrome.tabGroups.get(newGroupId);
+        if (updated.title === groupName && updated.color === color) break;
+        // Title/color didn't apply — wait and retry
+        await new Promise((r) => setTimeout(r, 100));
+      } catch {
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+
+    // Collapse in a separate call after title/color are confirmed
+    try {
+      await chrome.tabGroups.update(newGroupId, { collapsed: true });
+    } catch { /* group may have been closed by user */ }
+
     if (groupCache) groupCache.set(groupName, newGroupId);
   }
 }
