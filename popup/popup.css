@@ -592,6 +592,60 @@ mark.regex-highlight {
   background: #e0e0e0;
 }
 
+/* ── Examples section ─────────────────────────── */
+
+#examples-section {
+  margin-top: 12px;
+}
+
+.examples-heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.example-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.example-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.example-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: #1a1a1a;
+}
+
+.example-desc {
+  font-size: 11px;
+  color: #888;
+  margin-top: 1px;
+}
+
+.btn-use-example {
+  background: #e8f0fe;
+  color: #4285f4;
+  font-weight: 500;
+  font-size: 11px;
+  padding: 4px 12px;
+  flex-shrink: 0;
+}
+
+.btn-use-example:hover {
+  background: #d2e3fc;
+}
+
 /* ── Empty state ──────────────────────────────── */
 
 .empty-state {

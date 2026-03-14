@@ -1,6 +1,6 @@
 // popup.js — UI logic for managing rule sets
 
-const { generateId, getRuleSets, saveRuleSets, getSettings, saveSettings } =
+const { generateId, getRuleSets, saveRuleSets, getSettings, saveSettings, randomColor } =
   globalThis.TabCollectorStorage;
 
 // ── DOM refs ───────────────────────────────────────────────────────
@@ -485,6 +485,72 @@ jsonFileInput.addEventListener("change", () => {
   jsonFileInput.value = "";
 });
 
+// ── Examples ────────────────────────────────────────────────────────
+
+const EXAMPLES = [
+  {
+    name: "Jira by Ticket",
+    description: "Groups tabs by Jira ticket ID found in title or page content",
+    groupName: "$1",
+    color: "random",
+    matchMode: "any",
+    rules: [
+      { field: "title", operator: "regex", value: "([a-zA-Z]{2}\\-\\d+)", caseSensitive: false },
+      { field: "content", operator: "regex", value: "([a-zA-Z]{2}\\-\\d+)", caseSensitive: false },
+    ],
+  },
+];
+
+const examplesList = document.getElementById("examples-list");
+
+function renderExamples() {
+  examplesList.innerHTML = "";
+  for (let i = 0; i < EXAMPLES.length; i++) {
+    const ex = EXAMPLES[i];
+    const card = document.createElement("div");
+    card.className = "example-card";
+    card.innerHTML = `
+      <div class="example-info">
+        <div class="example-name">${escapeHtml(ex.name)}</div>
+        <div class="example-desc">${escapeHtml(ex.description)}</div>
+      </div>
+      <button class="btn-use-example" data-example="${i}">Use</button>
+    `;
+    examplesList.appendChild(card);
+  }
+}
+
+examplesList.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".btn-use-example");
+  if (!btn) return;
+
+  const ex = EXAMPLES[btn.dataset.example];
+  if (!ex) return;
+
+  const ruleSets = await getRuleSets();
+  const entry = {
+    id: generateId(),
+    name: ex.name,
+    groupName: ex.groupName || undefined,
+    color: ex.color === "random" ? randomColor() : ex.color,
+    matchMode: ex.matchMode,
+    priority: 0,
+    rules: ex.rules.map((r) => ({ ...r, id: generateId() })),
+    enabled: true,
+  };
+
+  ruleSets.push(entry);
+  await saveRuleSets(ruleSets);
+  await renderList();
+
+  btn.textContent = "Added!";
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = "Use";
+    btn.disabled = false;
+  }, 1200);
+});
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function escapeHtml(str) {
@@ -502,5 +568,6 @@ function escapeAttr(str) {
 (async () => {
   const settings = await getSettings();
   toggleAuto.checked = settings.autoGroup;
+  renderExamples();
   await renderList();
 })();
