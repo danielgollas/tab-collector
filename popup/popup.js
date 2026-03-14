@@ -499,6 +499,16 @@ const EXAMPLES = [
       { field: "content", operator: "regex", value: "([a-zA-Z]{2}\\-\\d+)", caseSensitive: false },
     ],
   },
+  {
+    name: "Google Services",
+    description: "Groups Gmail, Sheets, Calendar, Docs, and Drive — excludes Search",
+    color: "blue",
+    matchMode: "all",
+    rules: [
+      { field: "url", operator: "regex", value: "https://(mail|docs|sheets|calendar|drive)\\.google\\.com", caseSensitive: false },
+      { field: "url", operator: "not_contains", value: "google.com/search", caseSensitive: false },
+    ],
+  },
 ];
 
 const examplesList = document.getElementById("examples-list");
