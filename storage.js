@@ -32,6 +32,8 @@
   const DEFAULT_SETTINGS = {
     autoGroup: false,
     groupExisting: true,
+    moveGroupsToStart: false,
+    collectAllWindows: false,
   };
 
   const VALID_COLORS = [

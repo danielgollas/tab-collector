@@ -8,9 +8,10 @@ const { getRuleSets, getSettings, randomColor } = globalThis.TabCollectorStorage
 
 async function getPageContent(tabId) {
   try {
-    const [response] = await chrome.tabs.sendMessage(tabId, {
-      type: "GET_PAGE_CONTENT",
-    }).then((r) => [r]).catch(() => [null]);
+    const response = await Promise.race([
+      chrome.tabs.sendMessage(tabId, { type: "GET_PAGE_CONTENT" }).catch(() => null),
+      new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
     return response?.content || "";
   } catch {
     return "";
@@ -38,7 +39,7 @@ async function findOrCreateGroup(name, color, windowId, groupCache) {
   return null;
 }
 
-async function groupTab(tab, ruleSet, captures, groupCache) {
+async function groupTab(tab, ruleSet, captures, groupCache, targetWindowId) {
   if (tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
     return; // already grouped
   }
@@ -50,10 +51,17 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
   // skip grouping — the tab didn't produce the required capture values
   if (hasUnresolvedPlaceholders(groupName)) return;
 
+  // Move tab to target window if collecting across windows
+  if (targetWindowId && tab.windowId !== targetWindowId) {
+    await chrome.tabs.move(tab.id, { windowId: targetWindowId, index: -1 });
+  }
+
+  const windowId = targetWindowId || tab.windowId;
+
   const existingGroupId = await findOrCreateGroup(
     groupName,
     ruleSet.color,
-    tab.windowId,
+    windowId,
     groupCache,
   );
 
@@ -68,15 +76,14 @@ async function groupTab(tab, ruleSet, captures, groupCache) {
   }
 }
 
-async function evaluateTab(tab, groupCache) {
+async function evaluateTab(tab, groupCache, targetWindowId) {
   const ruleSets = await getRuleSets();
   if (ruleSets.length === 0) return;
 
   // Skip tabs that are already in a group
   if (tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) return;
 
-  // Skip chrome:// and edge:// internal pages
-  if (!tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) return;
+  if (!tab.url) return;
 
   // Check if any rule set needs content
   const needsContent = ruleSets.some(
@@ -96,32 +103,51 @@ async function evaluateTab(tab, groupCache) {
   for (const ruleSet of sorted) {
     const captures = matchRuleSet(ruleSet, tab, pageContent);
     if (captures !== false) {
-      await groupTab(tab, ruleSet, captures, groupCache);
+      await groupTab(tab, ruleSet, captures, groupCache, targetWindowId);
       return; // first matching rule set wins
     }
   }
 }
 
-async function evaluateAllTabs() {
+async function getTargetWindowId(senderWindowId) {
+  const settings = await getSettings();
+  if (!settings.collectAllWindows) return null;
+  if (senderWindowId) return senderWindowId;
+  const win = await chrome.windows.getLastFocused({ windowTypes: ["normal"] });
+  return win?.id || null;
+}
+
+async function evaluateAllTabs(senderWindowId) {
   const groupCache = new Map();
+  const targetWindowId = await getTargetWindowId(senderWindowId);
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    await evaluateTab(tab, groupCache);
+    await evaluateTab(tab, groupCache, targetWindowId);
+  }
+
+  if (targetWindowId) {
+    await moveGroupsToStart(targetWindowId);
+  } else {
+    const windows = new Set(tabs.map((t) => t.windowId));
+    for (const windowId of windows) {
+      await moveGroupsToStart(windowId);
+    }
   }
 }
 
-async function runSingleRuleSet(ruleSetId) {
+async function runSingleRuleSet(ruleSetId, senderWindowId) {
   const ruleSets = await getRuleSets();
   const ruleSet = ruleSets.find((rs) => rs.id === ruleSetId);
   if (!ruleSet) return;
 
   const groupCache = new Map();
+  const targetWindowId = await getTargetWindowId(senderWindowId);
   const tabs = await chrome.tabs.query({});
   const needsContent = ruleSet.rules.some((r) => r.field === "content");
 
   for (const tab of tabs) {
     if (tab.groupId && tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) continue;
-    if (!tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) continue;
+    if (!tab.url) continue;
 
     let pageContent = "";
     if (needsContent) {
@@ -130,8 +156,63 @@ async function runSingleRuleSet(ruleSetId) {
 
     const captures = matchRuleSet(ruleSet, tab, pageContent);
     if (captures !== false) {
-      await groupTab(tab, ruleSet, captures, groupCache);
+      await groupTab(tab, ruleSet, captures, groupCache, targetWindowId);
     }
+  }
+
+  if (targetWindowId) {
+    await moveGroupsToStart(targetWindowId);
+  } else {
+    const windows = new Set(tabs.map((t) => t.windowId));
+    for (const windowId of windows) {
+      await moveGroupsToStart(windowId);
+    }
+  }
+}
+
+// ── Move groups to start ──────────────────────────────────────────
+
+async function moveGroupsToStart(windowId) {
+  const settings = await getSettings();
+  if (!settings.moveGroupsToStart) return;
+
+  const groups = await chrome.tabGroups.query({ windowId });
+  // Move each group to index 0 in reverse order so the first group ends up at position 0
+  for (let i = groups.length - 1; i >= 0; i--) {
+    await chrome.tabGroups.move(groups[i].id, { index: 0 });
+  }
+}
+
+// ── Ungrouping logic ─────────────────────────────────────────────
+
+async function ungroupMatchingTabs(ruleSetsToCheck) {
+  const tabs = await chrome.tabs.query({});
+  const needsContent = ruleSetsToCheck.some(
+    (rs) => rs.rules.some((r) => r.field === "content"),
+  );
+
+  const tabIdsToUngroup = [];
+
+  for (const tab of tabs) {
+    if (!tab.groupId || tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) continue;
+    if (!tab.url) continue;
+
+    let pageContent = "";
+    if (needsContent) {
+      pageContent = await getPageContent(tab.id);
+    }
+
+    for (const ruleSet of ruleSetsToCheck) {
+      const captures = matchRuleSet(ruleSet, tab, pageContent);
+      if (captures !== false) {
+        tabIdsToUngroup.push(tab.id);
+        break;
+      }
+    }
+  }
+
+  if (tabIdsToUngroup.length > 0) {
+    await chrome.tabs.ungroup(tabIdsToUngroup);
   }
 }
 
@@ -159,8 +240,10 @@ chrome.tabs.onCreated.addListener(async (tab) => {
 // ── Message handling (from popup) ──────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const senderWindowId = message.windowId || sender.tab?.windowId;
+
   if (message.type === "GROUP_ALL_NOW") {
-    evaluateAllTabs().then(() => sendResponse({ success: true }));
+    evaluateAllTabs(senderWindowId).then(() => sendResponse({ success: true }));
     return true; // keep channel open for async response
   }
 
@@ -172,7 +255,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "RUN_RULESET") {
-    runSingleRuleSet(message.ruleSetId).then(() => sendResponse({ success: true }));
+    runSingleRuleSet(message.ruleSetId, senderWindowId).then(() => sendResponse({ success: true }));
+    return true;
+  }
+
+  if (message.type === "UNGROUP_ALL_NOW") {
+    getRuleSets().then((ruleSets) => {
+      const enabled = ruleSets.filter((rs) => rs.enabled);
+      ungroupMatchingTabs(enabled).then(() => sendResponse({ success: true }));
+    });
+    return true;
+  }
+
+  if (message.type === "UNGROUP_RULESET") {
+    getRuleSets().then((ruleSets) => {
+      const ruleSet = ruleSets.find((rs) => rs.id === message.ruleSetId);
+      if (!ruleSet) { sendResponse({ success: false }); return; }
+      ungroupMatchingTabs([ruleSet]).then(() => sendResponse({ success: true }));
+    });
     return true;
   }
 });

@@ -21,7 +21,10 @@ const btnAddRule = document.getElementById("btn-add-rule");
 const btnSave = document.getElementById("btn-save");
 const btnCancel = document.getElementById("btn-cancel");
 const btnGroupNow = document.getElementById("btn-group-now");
+const btnUngroupNow = document.getElementById("btn-ungroup-now");
 const toggleAuto = document.getElementById("toggle-auto");
+const toggleMoveStart = document.getElementById("toggle-move-start");
+const toggleCollectAllWindows = document.getElementById("toggle-collect-all-windows");
 
 const btnJson = document.getElementById("btn-json");
 const jsonEditor = document.getElementById("json-editor");
@@ -61,7 +64,8 @@ async function renderList() {
         <div class="meta">${rs.rules.length} rule${rs.rules.length !== 1 ? "s" : ""} · ${rs.matchMode === "any" ? "OR" : "AND"} · priority ${rs.priority ?? 0}</div>
       </div>
       <div class="actions">
-        <button data-action="run" data-id="${rs.id}" class="btn-run" title="Run this rule set now">Run</button>
+        <button data-action="run" data-id="${rs.id}" class="btn-run" title="Group tabs matching this rule set">Run</button>
+        <button data-action="ungroup" data-id="${rs.id}" class="btn-ungroup" title="Ungroup tabs matching this rule set">Ungrp</button>
         <button data-action="toggle" data-id="${rs.id}">${rs.enabled ? "Disable" : "Enable"}</button>
         <button data-action="edit" data-id="${rs.id}">Edit</button>
         <button data-action="delete" data-id="${rs.id}" class="btn-danger">Del</button>
@@ -349,10 +353,16 @@ btnAddRule.addEventListener("click", () => addRuleRow());
 btnSave.addEventListener("click", save);
 btnCancel.addEventListener("click", closeEditor);
 
+async function getCurrentWindowId() {
+  const win = await chrome.windows.getCurrent();
+  return win.id;
+}
+
 btnGroupNow.addEventListener("click", async () => {
   btnGroupNow.textContent = "Grouping...";
   btnGroupNow.disabled = true;
-  await chrome.runtime.sendMessage({ type: "GROUP_ALL_NOW" });
+  const windowId = await getCurrentWindowId();
+  await chrome.runtime.sendMessage({ type: "GROUP_ALL_NOW", windowId });
   btnGroupNow.textContent = "Done!";
   setTimeout(() => {
     btnGroupNow.textContent = "Group Now";
@@ -360,9 +370,32 @@ btnGroupNow.addEventListener("click", async () => {
   }, 1200);
 });
 
+btnUngroupNow.addEventListener("click", async () => {
+  btnUngroupNow.textContent = "Ungrouping...";
+  btnUngroupNow.disabled = true;
+  await chrome.runtime.sendMessage({ type: "UNGROUP_ALL_NOW" });
+  btnUngroupNow.textContent = "Done!";
+  setTimeout(() => {
+    btnUngroupNow.textContent = "Ungroup Now";
+    btnUngroupNow.disabled = false;
+  }, 1200);
+});
+
 toggleAuto.addEventListener("change", async () => {
   const settings = await getSettings();
   settings.autoGroup = toggleAuto.checked;
+  await saveSettings(settings);
+});
+
+toggleMoveStart.addEventListener("change", async () => {
+  const settings = await getSettings();
+  settings.moveGroupsToStart = toggleMoveStart.checked;
+  await saveSettings(settings);
+});
+
+toggleCollectAllWindows.addEventListener("change", async () => {
+  const settings = await getSettings();
+  settings.collectAllWindows = toggleCollectAllWindows.checked;
   await saveSettings(settings);
 });
 
@@ -378,9 +411,17 @@ listSection.addEventListener("click", async (e) => {
   if (action === "run") {
     btn.textContent = "...";
     btn.disabled = true;
-    await chrome.runtime.sendMessage({ type: "RUN_RULESET", ruleSetId: id });
+    const winId = await getCurrentWindowId();
+    await chrome.runtime.sendMessage({ type: "RUN_RULESET", ruleSetId: id, windowId: winId });
     btn.textContent = "Done!";
     setTimeout(() => { btn.textContent = "Run"; btn.disabled = false; }, 1200);
+    return;
+  } else if (action === "ungroup") {
+    btn.textContent = "...";
+    btn.disabled = true;
+    await chrome.runtime.sendMessage({ type: "UNGROUP_RULESET", ruleSetId: id });
+    btn.textContent = "Done!";
+    setTimeout(() => { btn.textContent = "Ungrp"; btn.disabled = false; }, 1200);
     return;
   } else if (action === "toggle") {
     const rs = ruleSets.find((r) => r.id === id);
@@ -509,9 +550,85 @@ const EXAMPLES = [
       { field: "url", operator: "not_contains", value: "google.com/search", caseSensitive: false },
     ],
   },
+  {
+    name: "GitHub by Repo",
+    description: "Groups tabs by GitHub org/repo from the URL",
+    groupName: "$1",
+    color: "purple",
+    matchMode: "all",
+    rules: [
+      { field: "url", operator: "regex", value: "github\\.com/([^/]+/[^/]+)", caseSensitive: false },
+    ],
+  },
+  {
+    name: "AWS Console",
+    description: "Groups all AWS console tabs together",
+    color: "orange",
+    matchMode: "all",
+    rules: [
+      { field: "url", operator: "contains", value: "console.aws.amazon.com", caseSensitive: false },
+    ],
+  },
+  {
+    name: "Localhost by Port",
+    description: "Groups local dev server tabs by port number",
+    groupName: ":$1",
+    color: "cyan",
+    matchMode: "all",
+    rules: [
+      { field: "url", operator: "regex", value: "localhost:(\\d+)", caseSensitive: false },
+    ],
+  },
+  {
+    name: "Social Media",
+    description: "Groups Twitter/X, Reddit, YouTube, Instagram, and Facebook",
+    color: "pink",
+    matchMode: "any",
+    rules: [
+      { field: "url", operator: "regex", value: "(twitter\\.com|x\\.com|reddit\\.com|youtube\\.com|instagram\\.com|facebook\\.com)", caseSensitive: false },
+    ],
+  },
+  {
+    name: "Shopping",
+    description: "Groups Amazon, eBay, Etsy, and other shopping sites",
+    color: "yellow",
+    matchMode: "any",
+    rules: [
+      { field: "url", operator: "regex", value: "(amazon\\.com|ebay\\.com|etsy\\.com|walmart\\.com|target\\.com)", caseSensitive: false },
+    ],
+  },
+  {
+    name: "News",
+    description: "Groups major news sites into one group",
+    color: "red",
+    matchMode: "any",
+    rules: [
+      { field: "url", operator: "regex", value: "(cnn\\.com|bbc\\.com|reuters\\.com|nytimes\\.com|theguardian\\.com|apnews\\.com)", caseSensitive: false },
+    ],
+  },
+  {
+    name: "Chrome Settings",
+    description: "Groups all chrome:// pages (settings, extensions, flags, etc.)",
+    color: "grey",
+    matchMode: "all",
+    rules: [
+      { field: "url", operator: "regex", value: "^chrome://", caseSensitive: false },
+    ],
+  },
 ];
 
 const examplesList = document.getElementById("examples-list");
+const examplesToggle = document.getElementById("examples-toggle");
+
+function setExamplesExpanded(expanded) {
+  examplesList.classList.toggle("hidden", !expanded);
+  examplesToggle.querySelector(".examples-arrow").textContent = expanded ? "\u25BC" : "\u25B6";
+  localStorage.setItem("tc-examples-collapsed", expanded ? "0" : "1");
+}
+
+examplesToggle.addEventListener("click", () => {
+  setExamplesExpanded(examplesList.classList.contains("hidden"));
+});
 
 function renderExamples() {
   examplesList.innerHTML = "";
@@ -578,6 +695,13 @@ function escapeAttr(str) {
 (async () => {
   const settings = await getSettings();
   toggleAuto.checked = settings.autoGroup;
+  toggleMoveStart.checked = settings.moveGroupsToStart;
+  toggleCollectAllWindows.checked = settings.collectAllWindows;
   renderExamples();
   await renderList();
+
+  const ruleSets = await getRuleSets();
+  const firstOpen = localStorage.getItem("tc-examples-collapsed") === null;
+  const noRules = ruleSets.length === 0;
+  setExamplesExpanded(firstOpen || noRules);
 })();

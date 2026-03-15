@@ -11,6 +11,7 @@
     <h1>Tab Collector</h1>
     <div class="header-actions">
       <button id="btn-group-now" title="Group all ungrouped tabs now">Group Now</button>
+      <button id="btn-ungroup-now" title="Ungroup tabs matching enabled rules">Ungroup Now</button>
       <button id="btn-json" title="Edit all rule sets as JSON">JSON</button>
     </div>
   </header>
@@ -21,6 +22,16 @@
       <span class="slider"></span>
       Auto-group
     </label>
+    <label class="toggle">
+      <input type="checkbox" id="toggle-move-start">
+      <span class="slider"></span>
+      Move groups to start
+    </label>
+    <label class="toggle">
+      <input type="checkbox" id="toggle-collect-all-windows">
+      <span class="slider"></span>
+      All windows
+    </label>
   </section>
 
   <!-- Rule set list -->
@@ -30,8 +41,10 @@
 
   <!-- Examples section -->
   <section id="examples-section">
-    <h3 class="examples-heading">Examples</h3>
-    <div id="examples-list"></div>
+    <h3 class="examples-heading" id="examples-toggle">
+      <span class="examples-arrow">&#9654;</span> Examples
+    </h3>
+    <div id="examples-list" class="hidden"></div>
   </section>
 
   <!-- Rule set editor (hidden by default) -->
